@@ -21,7 +21,12 @@ echo "Step 2: Downloading genome data..."
 # This call works because both scripts are in the same 'scripts' folder.
 # The SCRIPT_DIR makes sure it runs correctly from anywhere.
 echo "Select a genome to download by entering its accession number (e.g., GCA_000146045.2 for Yeast):"
-genome_data=$(${SCRIPT_DIR}/download_genome_directory.sh)
+"$SCRIPT_DIR/download_genome_directory.sh"
+if [ $? -ne 0 ]; then
+    echo "PIPELINE FAILED: The download process did not complete successfully."
+    exit 1
+fi
+
 # Extract the accession number and genome directory from the output.
 IFS=',' read -r ACCESSION GENOME_DIR < "${PROJECT_ROOT}/last_run.info"
 echo "Downloaded genome data for accession: $ACCESSION"
@@ -46,3 +51,19 @@ head -n 10 "${PROJECT_ROOT}/${GENOME_DIR}/genes_only.gff"
 
 # This line seems to be for sorting, which is fine.
 (sort_genes "${PROJECT_ROOT}/${GENOME_DIR}/cds_headers.txt" "2,2") > "${PROJECT_ROOT}/${GENOME_DIR}/sorted_cds_headers.txt"
+
+# counting the number of chromsomes in the genome
+# GENOME_FNA_FILE="${PROJECT_ROOT}/${GENOME_DIR}/GCA_000146045.2_R64_genomic.fna"
+GENOME_FNA_FILE=$(find "${PROJECT_ROOT}/${GENOME_DIR}" -type f -name "*${ACCESSION}*.fna")
+echo "Counting chromosomes in the genome using file: ${GENOME_FNA_FILE}"
+chromosome_count=$(count_chromosomes "${GENOME_FNA_FILE}")
+echo "Number of chromosomes in the genome: $chromosome_count"
+echo ""
+
+
+(get_exons "$GFF_FILE") > "${PROJECT_ROOT}/${GENOME_DIR}/exons_only.gff"
+echo "First 10 exon features:"
+head -n 10 "${PROJECT_ROOT}/${GENOME_DIR}/exons_only.gff"
+(sort_genes "${PROJECT_ROOT}/${GENOME_DIR}/exons_only.gff" "1,1") > "${PROJECT_ROOT}/${GENOME_DIR}/sorted_exons.gff"
+
+echo "--- Bioinformatics workflow completed successfully ---"
